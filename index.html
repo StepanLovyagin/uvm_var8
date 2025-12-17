@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>UVM Web</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2023.03.1/pyscript.css" />
+    <script defer src="https://pyscript.net/releases/2023.03.1/pyscript.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .container { display: flex; gap: 20px; margin-top: 10px; }
+        textarea { width: 100%; height: 300px; font-family: monospace; }
+        .box { flex: 1; }
+        button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white; border: none; font-size: 16px; }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>УВМ Вариант 8</h1>
+    
+    <div>
+        <label>Диапазон памяти: <input id="rng" value="0:15"></label>
+        <button id="run_btn" py-click="process()">▶ Ассемблировать и Запустить</button>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <h3>Source (CSV)</h3>
+            <textarea id="code">Command,Operand
+LOAD_CONST,10
+LOAD_CONST,6
+WRITE_MEM,0
+
+LOAD_CONST,0
+LOAD_CONST,10
+WRITE_MEM,0
+LOAD_CONST,1
+LOAD_CONST,20
+WRITE_MEM,0
+LOAD_CONST,2
+LOAD_CONST,30
+WRITE_MEM,0
+LOAD_CONST,3
+LOAD_CONST,40
+WRITE_MEM,0
+LOAD_CONST,4
+LOAD_CONST,50
+WRITE_MEM,0
+
+; mem[0] *= 6
+LOAD_CONST,0 
+READ_MEM,0      
+MUL,10      
+WRITE_MEM,0        
+
+; mem[1] *= 6
+LOAD_CONST,1
+READ_MEM,1
+MUL,10
+WRITE_MEM,0
+
+; mem[2] *= 6
+LOAD_CONST,2
+READ_MEM,2
+MUL,10
+WRITE_MEM,0
+
+; mem[3] *= 6
+LOAD_CONST,3
+READ_MEM,3
+MUL,10
+WRITE_MEM,0
+
+; mem[4] *= 6
+LOAD_CONST,4
+READ_MEM,4
+MUL,10
+WRITE_MEM,0</textarea>
+        </div>
+        <div class="box">
+            <h3>Output (XML Dump)</h3>
+            <textarea id="out" readonly placeholder="Нажмите кнопку запуска..."></textarea>
+        </div>
+    </div>
+
+    <py-config>
+        [[fetch]]
+        files = ["./assembler.py", "./interpreter.py"]
+    </py-config>
+
+    <py-script>
+        import assembler
+        import interpreter
+        import js
+
+        def process(*args, **kwargs):
+            try:
+                #Читаем код из левого окна
+                source_code = js.document.getElementById("code").value
+                
+                #Сохраняем во временный файл
+                with open("web_src.csv", "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                
+                #Ассемблируем
+                ir = assembler.parse_csv_to_ir("web_src.csv")
+                bin_data = assembler.generate_binary(ir)
+                assembler.write_binary_file("web_prog.bin", bin_data)
+
+                #Интерпретируем
+                rng_str = js.document.getElementById("rng").value
+                start, end = interpreter.parse_range(rng_str)
+                
+                vm = interpreter.VirtualMachine()
+                vm.load_program("web_prog.bin")
+                vm.execute()
+                vm.dump_memory("web_res.xml", start, end)
+
+                #Выводим результат в правое окно
+                with open("web_res.xml", "r", encoding="utf-8") as f:
+                    js.document.getElementById("out").value = f.read()
+
+            except Exception as e:
+                js.document.getElementById("out").value = f"Ошибка:\n{str(e)}"
+    </py-script>
+</body>
+</html>
